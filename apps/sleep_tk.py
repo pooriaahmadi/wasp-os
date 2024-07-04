@@ -37,24 +37,17 @@ import ppg
 from array import array
 from micropython import const
 
-# 1-bit RLE, 64x68, kindly designed by [Emanuel Löffler](https://github.com/plan5), 225 bytes
+# 1-bit RLE, 96x64, generated from res/icons/sleep_tk.png, 103 bytes
 icon = (
-    64, 68,
-    b'\xff\x00\x17\x12.\x12.\x12.\x18(\x186\n6\n'
-    b':\x04\x02\x028\x04\x02\x028\x04\x04\x044\x04\x04\x04'
-    b'4\x04\x04\x044\x04\x04\x046\x02\x04\x082\x02\x04\x08'
-    b'2\x02\x04\x082\x02\x04\x08$\x04\n\x02\x06\x06$\x04'
-    b'\n\x02\x06\x06$\x04\x08\x06\x04\x06$\x04\x08\x06\x04\x06'
-    b'"\x08\x06\x06\x04\x06"\x08\x06\x06\x04\x06"\x08\x06\x06'
-    b'\x04\x06"\x08\x06\x06\x04\x06 \n\x06\x06\x04\x06 \x16'
-    b'\x04\x06 \x16\x04\x06 \x16\x04\x06\x0b-\x08\x04\x07-'
-    b'\x08\x04\x07-\x08\x04\x07-\x08\x04&\x06\x04\x04\x06\x02'
-    b'*\x06\x04\x04\x06\x02*\x06\x04\x04\x06\x02*\x06\x04\x04'
-    b'\x06\x02*\x06\x04\x06\x04\x02*\x06\x04\x06\x04\x02,\x02'
-    b'\x04\x08\x02\x02.\x02\x04\x08\x02\x022\x0e2\x0e2\x0e'
-    b'2\x0e.\x11/\x11/\x11/\x11)\x17)\x14\x1a&'
-    b'\x1a&\x1a    \x1e"\x1e&\x14,\x14\xff\x00'
-    b']'
+    96,
+    64,
+    b"\xff\x00\xff\x00\xff\x00?\x08X\x08\\\x02^\x02\\\x02"
+    b"^\x02\\\x02^\x02^\x08X\x08\xa9\x0cT\x0cT\x0c"
+    b"Z\x03]\x03]\x03Z\x03]\x03]\x03Z\x03]\x03"
+    b"]\x03]\x0cT\x0cT\x0c\xa1\x10P\x10P\x10P\x10"
+    b"X\x04\\\x04\\\x04\\\x04X\x04\\\x04\\\x04\\\x04"
+    b"X\x04\\\x04\\\x04\\\x04\\\x10P\x10P\x10P\x10"
+    b"\xff\x00\xff\x00\xff\x00\x99",
 )
 
 # HARDCODED VARIABLES:
@@ -65,8 +58,10 @@ _RINGING = const(1)
 _SETTINGS1 = const(2)
 _SETTINGS2 = const(3)
 _FONT = fonts.sans18
-_FONT_COLOR = const(0xf800)  # red font to reduce eye strain at night
-_TIMESTAMP = const(946684800)  # unix time and time used by wasp os don't have the same reference date
+_FONT_COLOR = const(0xF800)  # red font to reduce eye strain at night
+_TIMESTAMP = const(
+    946684800
+)  # unix time and time used by wasp os don't have the same reference date
 
 ## USER SETTINGS #################################
 _KILL_BT = const(0)
@@ -100,8 +95,8 @@ _SLEEP_GOAL_CYCLE = const(5)
 ##################################################
 
 
-class SleepTkApp():
-    NAME = 'SleepTk'
+class SleepTkApp:
+    NAME = "SleepTk"
     ICON = icon
     VERSION = const(1)
 
@@ -128,9 +123,10 @@ class SleepTkApp():
                     self._state_body_tracking,
                     self._state_HR_tracking,
                     self._state_gradual_wake,
-                    self._state_natwake
-                    ) = [_ON if int(p) else _OFF
-                         for p in wasp.system.get("sleeptk_settings")]
+                    self._state_natwake,
+                ) = [
+                    _ON if int(p) else _OFF for p in wasp.system.get("sleeptk_settings")
+                ]
             except Exception:
                 pass
 
@@ -144,8 +140,10 @@ class SleepTkApp():
         # tracking is supposed to start
         self._page = _SETTINGS1
         self._currently_tracking = _OFF
-        self._conf_view = _OFF # confirmation view
-        self._buff = array("f", (_OFF, _OFF, _OFF)) # contains the sum of diff between each accel recordings and the previous recording, along each axis
+        self._conf_view = _OFF  # confirmation view
+        self._buff = array(
+            "f", (_OFF, _OFF, _OFF)
+        )  # contains the sum of diff between each accel recordings and the previous recording, along each axis
         self._last_touch = int(wasp.watch.rtc.time())
 
         try:
@@ -173,10 +171,12 @@ class SleepTkApp():
         self._conf_view = _OFF
         wasp.gc.collect()
         self._draw()
-        wasp.system.request_event(wasp.EventMask.TOUCH |
-                                  wasp.EventMask.SWIPE_LEFTRIGHT |
-                                  wasp.EventMask.SWIPE_UPDOWN |
-                                  wasp.EventMask.BUTTON)
+        wasp.system.request_event(
+            wasp.EventMask.TOUCH
+            | wasp.EventMask.SWIPE_LEFTRIGHT
+            | wasp.EventMask.SWIPE_UPDOWN
+            | wasp.EventMask.BUTTON
+        )
         if self._page == _SLEEPING and self._track_HR_once:
             wasp.system.request_tick(1000 // 8)
 
@@ -310,7 +310,9 @@ class SleepTkApp():
                 self._page = _SLEEPING
                 wasp.system.sleep()
         elif self._page == _SETTINGS1:
-            if self._state_alarm and (self._spin_H.touch(event) or self._spin_M.touch(event)):
+            if self._state_alarm and (
+                self._spin_H.touch(event) or self._spin_M.touch(event)
+            ):
                 if self._state_spinval_M == 0 and self._spin_M.value == 55:
                     self._spin_H.value -= 1
                 elif self._state_spinval_M == 55 and self._spin_M.value == 0:
@@ -371,14 +373,19 @@ class SleepTkApp():
             return
         draw.set_font(_FONT)
         if self._page == _SETTINGS1:
-            duration = (self._read_time(self._state_spinval_H, self._state_spinval_M) - wasp.watch.rtc.time()) / 60
+            duration = (
+                self._read_time(self._state_spinval_H, self._state_spinval_M)
+                - wasp.watch.rtc.time()
+            ) / 60
             percent_str = ""
             y = 180
         elif self._page == _SLEEPING:
             draw.set_color(_FONT_COLOR)
             duration = (wasp.watch.rtc.time() - self._track_start_time) / 60
             if self._state_alarm:
-                percent = (wasp.watch.rtc.time() - self._track_start_time) / (self._WU_t - self._track_start_time)
+                percent = (wasp.watch.rtc.time() - self._track_start_time) / (
+                    self._WU_t - self._track_start_time
+                )
                 percent_str = " ({:02d}%)".format(int(percent * 100))
             else:
                 percent_str = ""
@@ -386,10 +393,13 @@ class SleepTkApp():
                 return
             y = 130
 
-        draw.string("Slept {:02d}h{:02d}m{}".format(
-            int(duration // 60),
-            int(duration % 60),
-            percent_str), 0, y)
+        draw.string(
+            "Slept {:02d}h{:02d}m{}".format(
+                int(duration // 60), int(duration % 60), percent_str
+            ),
+            0,
+            y,
+        )
         cycl = duration / _CYCLE_LENGTH
         cycl_modulo = cycl % 1
         draw.string("so {} cycles   ".format(str(cycl)[0:4]), 0, y + 20)
@@ -422,7 +432,13 @@ class SleepTkApp():
             ti_start = wasp.watch.time.localtime(self._track_start_time)
             if self._state_alarm:
                 ti_stop = wasp.watch.time.localtime(self._WU_t)
-                draw.string('{:02d}:{:02d}  ->|  {:02d}:{:02d}'.format(ti_start[3], ti_start[4], ti_stop[3], ti_stop[4]), 0, 50)
+                draw.string(
+                    "{:02d}:{:02d}  ->|  {:02d}:{:02d}".format(
+                        ti_start[3], ti_start[4], ti_stop[3], ti_stop[4]
+                    ),
+                    0,
+                    50,
+                )
                 if self._state_gradual_wake and self._state_natwake:
                     draw.string("(Grad&Nat wake)", 0, 70)
                 elif self._state_gradual_wake:
@@ -430,8 +446,10 @@ class SleepTkApp():
                 elif self._state_natwake:
                     draw.string("(Natural wake)", 0, 70)
             else:
-                draw.string('{:02d}:{:02d}  ->  ??'.format(ti_start[3], ti_start[4]), 0, 50)
-            #draw.string("data points: {} / {}".format(str(self._data_point_nb), str(self._data_point_nb * _FREQ // _STORE_FREQ)), 0, 110)
+                draw.string(
+                    "{:02d}:{:02d}  ->  ??".format(ti_start[3], ti_start[4]), 0, 50
+                )
+            # draw.string("data points: {} / {}".format(str(self._data_point_nb), str(self._data_point_nb * _FREQ // _STORE_FREQ)), 0, 110)
             if self._track_HR_once:
                 draw.string("(ongoing)", 0, 170)
             if self._state_HR_tracking:
@@ -466,7 +484,9 @@ class SleepTkApp():
                 if self._state_alarm:
                     self._draw_duration(draw)
         elif self._page == _SETTINGS2:
-            self.check_body_tracking = widgets.Checkbox(x=0, y=40, label="Movement tracking")
+            self.check_body_tracking = widgets.Checkbox(
+                x=0, y=40, label="Movement tracking"
+            )
             self.check_body_tracking.state = self._state_body_tracking
             self.check_body_tracking.draw()
             if self._state_body_tracking:
@@ -496,26 +516,40 @@ class SleepTkApp():
         self.btn_HR = None
         self._spin_H = None
         self._spin_M = None
-        del self.check_al, self.check_body_tracking, self.check_grad, self.check_natwake, self.btn_sta, self.btn_snooz, self.btn_off, self.btn_HR, self._spin_H, self._spin_M
+        del (
+            self.check_al,
+            self.check_body_tracking,
+            self.check_grad,
+            self.check_natwake,
+            self.btn_sta,
+            self.btn_snooz,
+            self.btn_off,
+            self.btn_HR,
+            self._spin_H,
+            self._spin_M,
+        )
 
         self._currently_tracking = True
 
         # accel data not yet written to disk:
         self._data_point_nb = 0  # total number of data points so far
-        self._latest_save =  -1  # multiple of the saving frequency elapsed since start
+        self._latest_save = -1  # multiple of the saving frequency elapsed since start
         self._last_checkpoint = 0  # to know when to save to file
         self._track_start_time = int(wasp.watch.rtc.time())  # makes output more compact
         self._last_HR_printed = "?"
         self._meta_state = 0
         wasp.watch.accel.reset()
         xyz = wasp.watch.accel.accel_xyz()
-        self._accel_memory = array("f",
-            (xyz[0], xyz[1], xyz[2]))  # contains previous accelerometer value
+        self._accel_memory = array(
+            "f", (xyz[0], xyz[1], xyz[2])
+        )  # contains previous accelerometer value
 
         # if enabled, add alarm to log accel data in _FREQ seconds
         if self._state_body_tracking:
             # create one file per recording session:
-            self.filep = "logs/sleep/{}_{}_{}.csv".format(str(self._track_start_time + _TIMESTAMP), _STORE_FREQ, self.VERSION)
+            self.filep = "logs/sleep/{}_{}_{}.csv".format(
+                str(self._track_start_time + _TIMESTAMP), _STORE_FREQ, self.VERSION
+            )
             with open(self.filep, "wb") as f:
                 f.write("Timestamp,Motion,BPM,Meta".encode("ascii"))
             self.next_track_time = wasp.watch.rtc.time() + _FREQ
@@ -541,7 +575,9 @@ class SleepTkApp():
             # to wake up gradually
             if self._state_gradual_wake:
                 for t in _GRADUAL_WAKE:
-                    wasp.system.set_alarm(self._WU_t - int(t*60), self._tiny_vibration)
+                    wasp.system.set_alarm(
+                        self._WU_t - int(t * 60), self._tiny_vibration
+                    )
         else:
             self._WU_t = 0  # this is just to avoid the app overwriting itself when going in the background
 
@@ -557,6 +593,7 @@ class SleepTkApp():
         # kill bluetooth
         if _KILL_BT:
             import ble
+
             if ble.enabled():
                 ble.disable()
 
@@ -566,13 +603,16 @@ class SleepTkApp():
 
         # save settings as future defaults
         if hasattr(wasp.system, "set") and callable(wasp.system.set):
-            wasp.system.set("sleeptk_settings",
-                    [self._state_alarm,
-                     self._state_body_tracking,
-                     self._state_HR_tracking,
-                     self._state_gradual_wake,
-                     self._state_natwake
-                     ])
+            wasp.system.set(
+                "sleeptk_settings",
+                [
+                    self._state_alarm,
+                    self._state_body_tracking,
+                    self._state_HR_tracking,
+                    self._state_gradual_wake,
+                    self._state_natwake,
+                ],
+            )
 
     def _read_time(self, HH, MM):
         "convert time from spinners to seconds"
@@ -608,10 +648,12 @@ class SleepTkApp():
             if xyz == (0, 0, 0):
                 wasp.watch.accel.reset()
                 xyz = wasp.watch.accel.accel_xyz()
-            buff[0] += (abs(self._accel_memory[0]) - abs(xyz[0]))
-            buff[1] += (abs(self._accel_memory[1]) - abs(xyz[1]))
-            buff[2] += (abs(self._accel_memory[2]) - abs(xyz[2]))
-            self._accel_memory = array("f", (xyz[0], xyz[1], xyz[2]))  # contains previous accelerometer value
+            buff[0] += abs(self._accel_memory[0]) - abs(xyz[0])
+            buff[1] += abs(self._accel_memory[1]) - abs(xyz[1])
+            buff[2] += abs(self._accel_memory[2]) - abs(xyz[2])
+            self._accel_memory = array(
+                "f", (xyz[0], xyz[1], xyz[2])
+            )  # contains previous accelerometer value
             self._data_point_nb += 1
 
             # add alarm to log accel data in _FREQ seconds
@@ -619,24 +661,33 @@ class SleepTkApp():
             wasp.system.set_alarm(self.next_track_time, self._trackOnce)
 
             self._periodicSave()
-            if wasp.watch.battery.level() <= _BATTERY_THRESHOLD and ((not hasattr(wasp, "_is_in_simulation")) or wasp._is_in_simulation is False):
+            if wasp.watch.battery.level() <= _BATTERY_THRESHOLD and (
+                (not hasattr(wasp, "_is_in_simulation"))
+                or wasp._is_in_simulation is False
+            ):
                 # strop tracking if battery low
                 self._stop_tracking(keep_main_alarm=True)
                 h, m = wasp.watch.time.localtime(wasp.watch.rtc.time())[3:5]
-                wasp.system.notify(wasp.watch.rtc.get_uptime_ms(), {
-                    "src": "SleepTk",
-                    "title": "Bat low",
-                    "body": "Stopped tracking sleep at {}h{}m because your "
-                            "battery went below {}%. Alarm kept "
-                            "on but bluetooth turned off.".format(
-                                h, m, _BATTERY_THRESHOLD)})
+                wasp.system.notify(
+                    wasp.watch.rtc.get_uptime_ms(),
+                    {
+                        "src": "SleepTk",
+                        "title": "Bat low",
+                        "body": "Stopped tracking sleep at {}h{}m because your "
+                        "battery went below {}%. Alarm kept "
+                        "on but bluetooth turned off.".format(h, m, _BATTERY_THRESHOLD),
+                    },
+                )
                 import ble  # disable bluetooth to save battery
+
                 if ble.enabled():
                     ble.disable()
                 del ble
-            elif self._state_HR_tracking and \
-                    wasp.watch.rtc.time() - self._last_HR_date > _HR_FREQ and \
-                    not self._track_HR_once:
+            elif (
+                self._state_HR_tracking
+                and wasp.watch.rtc.time() - self._last_HR_date > _HR_FREQ
+                and not self._track_HR_once
+            ):
                 self._track_HR_once = int(wasp.watch.rtc.time())
                 wasp.system.wake()
                 if abs(int(wasp.watch.rtc.time()) - self._last_touch) > 5:
@@ -649,17 +700,17 @@ class SleepTkApp():
 
     def _periodicSave(self):
         """save data to csv with row order:
-            1. multiple from saving frequency from start, if different
-                than a simple increment from previous value
-            2/3/4. X/Y/Z diff values since the last recording. The values are
-                also averaged since the last recording then converted to
-                grad then into a single motion angle. This saves a lot of
-                space and allows for more frequent file savings.
-            5. BPM value or "?" if unknown
-            6. meta: 0 if nothing
-                     1 if pressed or touched (indicating wake state)
-                     2 if gradual vibration happened or natural wake
-                     3 if pressed or touched after gradual vibration
+        1. multiple from saving frequency from start, if different
+            than a simple increment from previous value
+        2/3/4. X/Y/Z diff values since the last recording. The values are
+            also averaged since the last recording then converted to
+            grad then into a single motion angle. This saves a lot of
+            space and allows for more frequent file savings.
+        5. BPM value or "?" if unknown
+        6. meta: 0 if nothing
+                 1 if pressed or touched (indicating wake state)
+                 2 if gradual vibration happened or natural wake
+                 3 if pressed or touched after gradual vibration
         """
         # fix the status bar never updating
         self.stat_bar = widgets.StatusBar()
@@ -686,25 +737,28 @@ class SleepTkApp():
                 meta = self._meta_state
             fac = 2 * math.pi / 2000 / n * 1000  # conversion factor
             motion = math.atan(
-                    (buff[2] * fac) / (
-                        math.sqrt(
-                            (buff[0] * fac) ** 2 + (buff[1] * fac) ** 2 + 0.00001)
-                        ))
+                (buff[2] * fac)
+                / (math.sqrt((buff[0] * fac) ** 2 + (buff[1] * fac) ** 2 + 0.00001))
+            )
             # only write the number if it's not obvious, meaning saving was
             # delayed
-            timestamp = int((wasp.watch.rtc.time() - self._track_start_time) / _STORE_FREQ)
+            timestamp = int(
+                (wasp.watch.rtc.time() - self._track_start_time) / _STORE_FREQ
+            )
             if timestamp == self._latest_save + 1:
                 self._latest_save = timestamp
                 timestamp = ""
             else:
                 self._latest_save = timestamp
             with open(self.filep, "ab") as f:
-                f.write("\n{},{:.3f},{},{}".format(
-                    timestamp,
-                    motion,
-                    bpm,
-                    meta,
-                    ).encode("ascii"))
+                f.write(
+                    "\n{},{:.3f},{},{}".format(
+                        timestamp,
+                        motion,
+                        bpm,
+                        meta,
+                    ).encode("ascii")
+                )
             # reset buffer
             buff = array("f", (_OFF, _OFF, _OFF))
             wasp.watch.accel.reset()
@@ -723,7 +777,9 @@ class SleepTkApp():
         self._page = _RINGING
         self._n_vibration = 0
         wasp.system.request_tick(period_ms=1000)
-        wasp.system.notify_level = self._old_notification_level  # restore notification level
+        wasp.system.notify_level = (
+            self._old_notification_level
+        )  # restore notification level
         wasp.system.brightness = self._old_brightness_level
         wasp.gc.collect()
         if abs(int(wasp.watch.rtc.time()) - self._last_touch) > 5:
@@ -773,8 +829,10 @@ class SleepTkApp():
         if self._page == _RINGING and self._state_natwake == _OFF:
             wasp.system.keep_awake()
             # in 60 vibrations, ramp up from subtle to strong:
-            wasp.watch.vibrator.pulse(duty=max(80 - 1 * self._n_vibration, 20),
-                                      ms=min(100 + 6 * self._n_vibration, 500))
+            wasp.watch.vibrator.pulse(
+                duty=max(80 - 1 * self._n_vibration, 20),
+                ms=min(100 + 6 * self._n_vibration, 500),
+            )
             self._n_vibration += 1
         elif self._track_HR_once:
             wasp.watch.hrs.enable()
@@ -811,7 +869,11 @@ class SleepTkApp():
                 elif bpm < 100 and bpm > 40:
                     # if HR was already computed since last periodicSave,
                     # then average the two values
-                    if self._last_HR != _OFF and self._last_HR != "?" and isinstance(int, self._last_HR):
+                    if (
+                        self._last_HR != _OFF
+                        and self._last_HR != "?"
+                        and isinstance(int, self._last_HR)
+                    ):
                         self._last_HR = (self._last_HR + bpm) // 2
                     else:
                         self._last_HR = bpm
@@ -836,7 +898,9 @@ class SleepTkApp():
             wasp.watch.display.poweroff()
         wasp.system.wake()
         wasp.system.switch(self)
-        if self._page != _RINGING:  # safeguard: don't vibrate anymore if already on ringing page
+        if (
+            self._page != _RINGING
+        ):  # safeguard: don't vibrate anymore if already on ringing page
             wasp.watch.vibrator.pulse(duty=3, ms=50)
             # time.sleep(0.1)
             # wasp.watch.vibrator.pulse(duty=3, ms=50)

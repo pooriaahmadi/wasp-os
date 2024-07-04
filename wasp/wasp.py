@@ -20,20 +20,27 @@ import machine
 import micropython
 import steplogger
 import sys
+import os
+import json
 import watch
+import shell
 import widgets
 import appregistry
-
 from apps.system.launcher import LauncherApp
 from apps.system.pager import PagerApp, CrashApp, NotificationApp
 from apps.system.step_counter import StepCounterApp
+from micropython import const
 
-class EventType():
+SETTINGS_PATH = const("logs/settings/saved_settings.json")
+
+
+class EventType:
     """Enumerated interface actions.
 
     MicroPython does not implement the enum module so EventType
     is simply a regular object which acts as a namespace.
     """
+
     DOWN = 1
     UP = 2
     LEFT = 3
@@ -44,16 +51,18 @@ class EventType():
     BACK = 254
     NEXT = 253
 
-class EventMask():
-    """Enumerated event masks.
-    """
+
+class EventMask:
+    """Enumerated event masks."""
+
     TOUCH = 0x0001
     SWIPE_LEFTRIGHT = 0x0002
     SWIPE_UPDOWN = 0x0004
     BUTTON = 0x0008
     NEXT = 0x0010
 
-class PinHandler():
+
+class PinHandler:
     """Pin (and Signal) event generator.
 
     TODO: Currently this driver doesn't actually implement any
@@ -83,15 +92,18 @@ class PinHandler():
         self._value = new_value
         return new_value
 
+
 def _key_app(d):
     """Get a sort key for apps."""
     return d.NAME
+
 
 def _key_alarm(d):
     """Get a sort key for alarms."""
     return d[0]
 
-class Manager():
+
+class Manager:
     """Wasp-os system manager
 
     The manager is responsible for handling top-level UI events and
@@ -115,39 +127,36 @@ class Manager():
         self.musicinfo = {}
         self.weatherinfo = {}
         self.units = "Metric"
-        
+
         # Custom variables
-        
+
         # Raise to wake
-        self.raise_wake = False
         self.last_raise_y = 0
         self.accel_poll_ms = 100
         self.accel_poll_expiry = 0
 
         self._theme = (
-                b'\x7b\xef'     # ble
-                b'\x7b\xef'     # scroll-indicator
-                b'\x7b\xef'     # battery
-                b'\xe7\x3c'     # status-clock
-                b'\x7b\xef'     # notify-icon
-                b'\xff\xff'     # bright
-                b'\xbd\xb6'     # mid
-                b'\x39\xff'     # ui
-                b'\xff\x00'     # spot1
-                b'\xdd\xd0'     # spot2
-                b'\x00\x0f'     # contrast
+            b"\x7b\xef"  # ble
+            b"\x7b\xef"  # scroll-indicator
+            b"\x7b\xef"  # battery
+            b"\xe7\x3c"  # status-clock
+            b"\x7b\xef"  # notify-icon
+            b"\xff\xff"  # bright
+            b"\xbd\xb6"  # mid
+            b"\x39\xff"  # ui
+            b"\xff\x00"  # spot1
+            b"\xdd\xd0"  # spot2
+            b"\x00\x0f"  # contrast
         )
 
-        self.blank_after = 15 # seconds
+        self.blank_after = 15  # seconds
 
         self._alarms = []
-        self._brightness = 2
-        self._notifylevel = 2
-        if 'P8' in watch.os.uname().machine:
+        if "P8" in watch.os.uname().machine:
             self._nfylevels = [0, 225, 450]
         else:
             self._nfylevels = [0, 40, 80]
-        self._nfylev_ms = self._nfylevels[self._notifylevel - 1]
+        self._nfylev_ms = self._nfylevels[1]
         self._button = PinHandler(watch.button)
         self._charging = True
         self._scheduled = False
@@ -164,7 +173,7 @@ class Manager():
             # System start up...
             watch.display.poweron()
             watch.display.mute(True)
-            watch.backlight.set(self._brightness)
+            watch.backlight.set(2)
             self.sleep_at = watch.rtc.uptime + 90
             if watch.free:
                 gc.collect()
@@ -172,16 +181,22 @@ class Manager():
 
             self.switch(self.quick_ring[0])
 
+        self.setting_classes = []
+        self.saved_settings = {}
+        self.read_settings_file()
+        self.load_settings()
+
+        self._nfylev_ms = self._nfylevels[self.notify_level - 1]
+
     def register_defaults(self):
         """Register the default applications."""
 
         for app in appregistry.autoload_list:
             self.register(app[0], app[1], app[2], app[3])
 
-        self.register('apps.system.step_counter.StepCounterApp', no_except=True)
-        self.register('apps.system.settings.SettingsApp', no_except=True)
-        self.register('apps.system.software.SoftwareApp', no_except=True)
-        self.register(PaintApp())
+        self.register("apps.system.step_counter.StepCounterApp", no_except=True)
+        self.register("apps.system.settings.SettingsApp", no_except=True)
+        self.register("apps.system.software.SoftwareApp", no_except=True)
 
     def register(self, app, quick_ring=False, watch_face=False, no_except=False):
         """Register an application with the system.
@@ -192,16 +207,16 @@ class Manager():
         :param object no_except: Ignore exceptions when instantiating applications
         """
         if isinstance(app, str):
-            modname = app[:app.rindex('.')]
-            exec('import ' + modname)
+            modname = app[: app.rindex(".")]
+            exec("import " + modname)
             if no_except:
                 try:
-                    app = eval(app + '()')
+                    app = eval(app + "()")
                 except:
                     app = None
             else:
-                    app = eval(app + '()')
-            exec('del ' + modname)
+                app = eval(app + "()")
+            exec("del " + modname)
             exec('del sys.modules["' + modname + '"]')
             if not app:
                 return
@@ -218,7 +233,7 @@ class Manager():
             self.quick_ring.append(app)
         else:
             self.launcher_ring.append(app)
-            self.launcher_ring.sort(key = _key_app)
+            self.launcher_ring.sort(key=_key_app)
 
     def unregister(self, cls):
         for app in self.launcher_ring:
@@ -229,22 +244,30 @@ class Manager():
     @property
     def brightness(self):
         """Cached copy of the brightness current written to the hardware."""
-        return self._brightness
+        return self.setting_classes[0].fields[0].value
 
     @brightness.setter
     def brightness(self, value):
-        self._brightness = value
-        watch.backlight.set(self._brightness)
+        self.setting_classes[0].fields[0].value = value
+        watch.backlight.set(value)
 
     @property
     def notify_level(self):
         """Cached copy of the current notify level"""
-        return self._notifylevel
+        return self.setting_classes[1].fields[0].value
 
     @notify_level.setter
     def notify_level(self, value):
-        self._notifylevel = value
-        self._nfylev_ms = self._nfylevels[self._notifylevel - 1]
+        self.setting_classes[1].fields[0].value = value
+        self._nfylev_ms = self._nfylevels[self.notify_level - 1]
+
+    @property
+    def raise_wake(self):
+        return self.setting_classes[5].fields[0].value
+
+    @raise_wake.setter
+    def raise_wake(self, value: bool):
+        self.setting_classes[5].fields[0].value = value
 
     @property
     def notify_duration(self):
@@ -252,13 +275,12 @@ class Manager():
         return self._nfylev_ms
 
     def switch(self, app):
-        """Switch to the requested application.
-        """
+        """Switch to the requested application."""
         if self.app is app:
             return
 
         if self.app:
-            if 'background' in dir(self.app):
+            if "background" in dir(self.app):
                 try:
                     self.app.background()
                 except:
@@ -309,7 +331,7 @@ class Manager():
             if self.app in app_list:
                 i = app_list.index(self.app) - 1
                 if i < 0:
-                    i = len(app_list)-1
+                    i = len(app_list) - 1
             else:
                 i = 0
             self.switch(app_list[i])
@@ -395,10 +417,9 @@ class Manager():
         self.sleep_at = watch.rtc.uptime + self.blank_after
 
     def sleep(self):
-        """Enter the deepest sleep state possible.
-        """
+        """Enter the deepest sleep state possible."""
         watch.backlight.set(0)
-        if 'sleep' not in dir(self.app) or not self.app.sleep():
+        if "sleep" not in dir(self.app) or not self.app.sleep():
             self.switch(self.quick_ring[0])
             self.app.sleep()
         watch.display.poweroff()
@@ -407,20 +428,18 @@ class Manager():
         self.sleep_at = None
 
     def wake(self):
-        """Return to a running state.
-        """
+        """Return to a running state."""
         if not self.sleep_at:
             watch.display.poweron()
-            if 'wake' in dir(self.app):
+            if "wake" in dir(self.app):
                 self.app.wake()
-            watch.backlight.set(self._brightness)
+            watch.backlight.set(self.brightness)
             watch.touch.wake()
 
         self.keep_awake()
 
     def _handle_button(self, state):
-        """Process a button-press (or unpress) event.
-        """
+        """Process a button-press (or unpress) event."""
         self.keep_awake()
 
         if bool(self.event_mask & EventMask.BUTTON):
@@ -433,8 +452,7 @@ class Manager():
             self.navigate(EventType.HOME)
 
     def _handle_touch(self, event):
-        """Process a touch event.
-        """
+        """Process a touch event."""
         self.keep_awake()
         event_mask = self.event_mask
 
@@ -452,8 +470,9 @@ class Manager():
 
         if event[0] < 5:
             updown = event[0] == 1 or event[0] == 2
-            if (bool(event_mask & EventMask.SWIPE_UPDOWN) and updown) or \
-               (bool(event_mask & EventMask.SWIPE_LEFTRIGHT) and not updown):
+            if (bool(event_mask & EventMask.SWIPE_UPDOWN) and updown) or (
+                bool(event_mask & EventMask.SWIPE_LEFTRIGHT) and not updown
+            ):
                 if self.app.swipe(event):
                     self.navigate(event[0])
             else:
@@ -507,17 +526,19 @@ class Manager():
 
             gc.collect()
         else:
-            if 1 == self._button.get_event() or \
-                    self._charging != watch.battery.charging():
+            if (
+                1 == self._button.get_event()
+                or self._charging != watch.battery.charging()
+            ):
                 self.wake()
-                
-        if self.raise_wake:
+
+        if self.raise_wake == 1:
             now = rtc.get_uptime_ms()
             if now >= self.accel_poll_expiry:
-                self.accel_poll_expiry = (now + self.accel_poll_ms)
+                self.accel_poll_expiry = now + self.accel_poll_ms
                 if self._do_raise_wake():
                     self.wake()
-                    
+
     def _do_raise_wake(self):
 
         (x, y, z) = watch.accel.accel_xyz()
@@ -552,14 +573,14 @@ class Manager():
         calls self.schedule() directly at startup from main.py.
         """
         if self._scheduling:
-            print('Watch already running in the background')
+            print("Watch already running in the background")
             return
 
         self.secondary_init()
 
         # Reminder: wasptool uses this string to confirm the device has
         # been set running again.
-        print('Watch is running, use Ctrl-C to stop')
+        print("Watch is running, use Ctrl-C to stop")
 
         if not no_except:
             # This is a simplified (uncommented) version of the loop
@@ -574,10 +595,12 @@ class Manager():
             except KeyboardInterrupt:
                 raise
             except MemoryError:
-                self.switch(PagerApp("Your watch is low on memory.\n\nYou may want to reboot."))
+                self.switch(
+                    PagerApp("Your watch is low on memory.\n\nYou may want to reboot.")
+                )
             except Exception as e:
                 # Only print the exception if the watch provides a way to do so!
-                if 'print_exception' in dir(watch):
+                if "print_exception" in dir(watch):
                     watch.print_exception(e)
                 self.switch(CrashApp(e))
 
@@ -592,10 +615,12 @@ class Manager():
         try:
             self._tick()
         except MemoryError:
-            self.switch(PagerApp("Your watch is low on memory.\n\nYou may want to reboot."))
+            self.switch(
+                PagerApp("Your watch is low on memory.\n\nYou may want to reboot.")
+            )
         except Exception as e:
             # Only print the exception if the watch provides a way to do so!
-            if 'print_exception' in dir(watch):
+            if "print_exception" in dir(watch):
                 watch.print_exception(e)
             self.switch(CrashApp(e))
 
@@ -628,20 +653,78 @@ class Manager():
 
     def theme(self, theme_part: str) -> int:
         """Returns the relevant part of theme. For more see ../tools/themer.py"""
-        theme_parts = ("ble",
-                       "scroll-indicator",
-                       "battery",
-                       "status-clock",
-                       "notify-icon",
-                       "bright",
-                       "mid",
-                       "ui",
-                       "spot1",
-                       "spot2",
-                       "contrast")
+        theme_parts = (
+            "ble",
+            "scroll-indicator",
+            "battery",
+            "status-clock",
+            "notify-icon",
+            "bright",
+            "mid",
+            "ui",
+            "spot1",
+            "spot2",
+            "contrast",
+        )
         if theme_part not in theme_parts:
-            raise IndexError('Theme part {} does not exist'.format(theme_part))
+            raise IndexError("Theme part {} does not exist".format(theme_part))
         idx = theme_parts.index(theme_part) * 2
-        return (self._theme[idx] << 8) | self._theme[idx+1]
+        return (self._theme[idx] << 8) | self._theme[idx + 1]
+
+    def read_settings_file(self):
+        try:
+            shell.mkdir("logs")
+        except:  # folder already exists
+            pass
+        try:
+            shell.mkdir("logs/settings")
+        except:  # folder already exists
+            pass
+        if os.path.exists(SETTINGS_PATH):
+            with open(SETTINGS_PATH, "r", encoding="utf-8") as saved_settings_file:
+                self.saved_settings = json.load(saved_settings_file)
+        else:
+            with open(SETTINGS_PATH, "w", encoding="utf-8") as saved_settings_file:
+                saved_settings_file.write(json.dumps({}, separators=(",", ":")))
+                self.saved_settings = {}
+
+    def save_to_settings(self, setting_name: str, field_name: str, value):
+        try:
+            self.saved_settings[setting_name][field_name] = value
+        except KeyError as e:
+            if e.args[0] == setting_name:
+                self.saved_settings[setting_name] = {}
+                return self.save_to_settings(setting_name, field_name, value)
+            else:
+                raise e
+
+        with open(SETTINGS_PATH, "w", encoding="utf-8") as saved_settings_file:
+            json.dump(self.saved_settings, saved_settings_file, separators=(",", ":"))
+
+    def get_from_settings(self, setting_name: str, field_name: str):
+        try:
+            return self.saved_settings[setting_name][field_name]
+        except KeyError as e:
+            return None
+
+    def load_settings(self):
+        setting_files = os.listdir("wasp/apps/system/settings_modules")
+        setting_files = [file for file in setting_files if file.endswith(".py")]
+
+        for setting_file in setting_files:
+            app = (
+                "from apps.system.settings_modules."
+                + setting_file.replace(".py", "")
+                + " import "
+                + setting_file.replace(".py", "")
+            )
+            exec(app)
+            module = eval(setting_file.replace(".py", "") + "()")
+
+            module.retrieve_field_values()
+            self.setting_classes.append(module)
+
+        self.setting_classes.sort(key=lambda x: x.ORDER)
+
 
 system = Manager()
