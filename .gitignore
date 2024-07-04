@@ -15,3 +15,4 @@ wasp/appregistry.py
 .idea
 .vscode
 logs
+.venv
