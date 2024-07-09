@@ -1,0 +1,22 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "source .venv/bin/activate && make -j `nproc` BOARD=pinetime all"
+        },
+        {
+            "label": "simulate",
+            "type": "shell",
+            "command": "source .venv/bin/activate && make clean BOARD=pinetime && make sim"
+        },
+        {
+            "label": "upload",
+            "type": "shell",
+            "command": "tools/ota-dfu/dfu.py -z build-pinetime/micropython.zip -a DE:9B:38:E4:EA:49 --legacy"
+        }
+    ]
+}

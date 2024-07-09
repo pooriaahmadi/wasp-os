@@ -13,6 +13,5 @@ wasp/boards/manifest_user_apps.py
 wasp/apps/user
 wasp/appregistry.py
 .idea
-.vscode
 logs
 .venv
