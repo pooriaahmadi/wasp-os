@@ -123,10 +123,6 @@ class Manager:
         self.weatherinfo = {}
         self.units = "Metric"
 
-        self.last_raise_y = 0
-        self.accel_poll_ms = 100
-        self.accel_poll_expiry = 0
-
         self._theme = (
             b"\x7b\xef"  # ble
             b"\x7b\xef"  # scroll-indicator
@@ -509,11 +505,6 @@ class Manager:
                 1 == self._button.get_event()
                 or self._charging != watch.battery.charging()
             ):
-                self.wake()
-        now = rtc.get_uptime_ms()
-        if now >= self.accel_poll_expiry:
-            self.accel_poll_expiry = now + self.accel_poll_ms
-            if self._do_raise_wake():
                 self.wake()
 
     def _do_raise_wake(self):

@@ -6,15 +6,20 @@ file = 'apps/stopwatch.py'
 
 [[app]]
 file = 'apps/heart.py'
-
-[[app]]
-file = 'apps/alarm.py'
+auto_load = true
 
 [[app]]
 file = 'apps/timer.py'
 
 [[app]]
-file = 'apps/sleep_tk.py'
+file = 'apps/play2048.py'
+auto_load = true
+
+[[app]]
+file = 'apps/flashlight.py'
+
+[[app]]
+file = 'apps/alarm.py'
 auto_load = true
 
 [[app]]

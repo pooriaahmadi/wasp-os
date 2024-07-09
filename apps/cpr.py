@@ -21,10 +21,8 @@ class CprApp:
 
     NAME = "CPR"
 
-    def __init__(self):
-        self.counter = 0
-
     def foreground(self):
+        self.counter = 0
         wasp.system.request_tick(60000 / _COMPRESSION_RPM)
         self._draw()
 
