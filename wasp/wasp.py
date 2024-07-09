@@ -31,7 +31,7 @@ from apps.system.pager import PagerApp, CrashApp, NotificationApp
 from apps.system.step_counter import StepCounterApp
 from micropython import const
 
-SETTINGS_PATH = const("logs/settings/saved_settings.json")
+SETTINGS_PATH = "logs/settings/saved_settings.json"
 
 
 class EventType:
