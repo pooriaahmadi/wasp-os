@@ -6,12 +6,12 @@
         {
             "label": "build",
             "type": "shell",
-            "command": "source .venv/bin/activate && make -j `nproc` BOARD=pinetime all"
+            "command": "make clean BOARD=pinetime && make -j `nproc` BOARD=pinetime all"
         },
         {
             "label": "simulate",
             "type": "shell",
-            "command": "source .venv/bin/activate && make clean BOARD=pinetime && make sim"
+            "command": "make clean BOARD=pinetime && make sim"
         },
         {
             "label": "upload",
