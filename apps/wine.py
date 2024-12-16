@@ -2,22 +2,17 @@ import wasp
 import icons
 import fonts
 import array
-import time
+import watch
 
 from micropython import const
 
-ALCOHOL_DENSITY = const(0.8)  #: density of alcohol (g/ml)
-BLOOD_DENSITY = const(1.055)  #: density of blood (g/ml)
-WATER_IN_BLOOD = const(0.8)  #: parts of water in blood (%)
-ALCOHOL_DEGRADATION = const(0.0025)  #: for kg body weight per minute (g)
-
 
 def calculate_alcohol_weight(volume, percent):
-    return ALCOHOL_DENSITY * volume * (percent / 100)
+    return 0.8 * volume * (percent / 100)
 
 
 def calculate_alcohol_degradation(weight, minutes=1):
-    return ALCOHOL_DEGRADATION * weight * minutes
+    return 0.0025 * weight * minutes
 
 
 def calculate_body_water(age, weight, height, sex):
@@ -28,11 +23,11 @@ def calculate_body_water(age, weight, height, sex):
 
 
 def promille_to_gramm(promille, body_water):
-    return (promille * (BLOOD_DENSITY * body_water)) / WATER_IN_BLOOD
+    return (promille * (1.055 * body_water)) / 0.8
 
 
 def gramm_to_promille(gramm, body_water):
-    return (gramm * WATER_IN_BLOOD) / (BLOOD_DENSITY * body_water)
+    return (gramm * 0.8) / (1.055 * body_water)
 
 
 def get_blood_alcohol_content(
@@ -72,18 +67,21 @@ def bac_time(age, weight, height, sex, minutes, volume, percent):
 
 
 def string_to_time(time_str):
-    date, t = time_str.split()
-    year, month, day = map(int, date.split("-"))
-    hour, minute = map(int, t.split(":"))
-    return time.mktime((year, month, day, hour, minute, 0, 0, 0, 0))
+    time_str = time_str.split("-")
+    return (
+        int(time_str[0]) * 525600
+        + int(time_str[1]) * (525600 / 12)
+        + int(time_str[2]) * 1440
+        + int(time_str[3]) * 60
+        + int(time_str[4])
+    )
 
 
 def minutes_passed(time_str):
-    past_time = string_to_time(time_str)
-    current_time = time.time()
-    time_difference = current_time - past_time
-    minutes = int(time_difference / 60)
-    return minutes
+    now = watch.rtc.get_localtime()
+    return (
+        now[0] * 525600 + now[1] * (525600 / 12) + now[2] * 1440 + now[3] * 60 + now[4]
+    ) - string_to_time(time_str)
 
 
 class WineApp(object):
@@ -95,7 +93,11 @@ class WineApp(object):
         self._drinks = array.array("B", [0, 0, 0])
         try:
             with open("drinks.txt", "r", encoding="utf-8") as f:
-                last_line = f.readlines()[-1]
+                raw = f.readlines()
+                if len(raw) < 1:
+                    last_line = ""
+                else:
+                    last_line = raw[-1]
                 if "\n" in last_line:
                     last_line = ""
             for drink in last_line.split(";"):
@@ -126,11 +128,15 @@ class WineApp(object):
         if self._page == 3:
             draw.string("Sober?", 0, 50, width=240)
             with open("drinks.txt", "r", encoding="utf-8") as f:
-                last_line = f.readlines()[-1]
+                raw = f.readlines()
+                if len(raw) < 1:
+                    last_line = ""
+                else:
+                    last_line = raw[-1]
                 if "\n" in last_line:
                     last_line = ""
 
-            _BAC = 0
+            bac = 0
             for drink_txt in last_line.split(";"):
                 if len(drink_txt) < 5:
                     continue
@@ -147,11 +153,11 @@ class WineApp(object):
                     alcohol_percentage = 40
                     amount = 30
 
-                _BAC += bac_time(
+                bac += bac_time(
                     19, 70, 168, False, minutes_passed(date), amount, alcohol_percentage
                 )
 
-            draw.string("BAC: " + str(round(_BAC, 3)) + "%", 0, 100, width=240)
+            draw.string("BAC: " + str(round(bac, 3)) + "%", 0, 100, width=240)
             return
 
         if self._page == 4:
@@ -207,10 +213,10 @@ class WineApp(object):
             self._spinner.touch(event)
             if self._drinks[self._page] < self._spinner.value:
                 with open("drinks.txt", "a", encoding="utf-8") as f:
+                    now = watch.rtc.get_localtime()
                     f.write(
-                        str(self._page)
-                        + ","
-                        + time.strftime("%Y-%m-%d %H:%M", time.localtime(time.time()))
-                        + ";"
+                        "{},{}-{}-{}-{}-{}".format(
+                            str(self._page), now[0], now[1], now[2], now[3], now[4]
+                        )
                     )
             self._drinks[self._page] = self._spinner.value

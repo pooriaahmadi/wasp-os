@@ -25,18 +25,13 @@ file = 'apps/disa_b_l_e.py'
 
 [[app]]
 file = 'apps/wine.py'
-
-[[app]] # If only one watch face is included this app can be removed
-file = 'apps/faces.py'
 auto_load = true
-no_except = true
 
+[[app]]
+file = 'apps/flashlight.py'
+auto_load = true
+
+ 
 [[watchface]]
-file = 'watch_faces/clock.py'
-
-[[watchface]] # Requires ClockApp to also be installed
-file = 'watch_faces/week_clock.py'
+file = 'watch_faces/terminal.py'
 default = true
-
-[[watchface]]
-file = 'watch_faces/chrono.py'
