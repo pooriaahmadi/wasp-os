@@ -15,12 +15,14 @@ import watch
 
 from micropython import const
 
+
 class BatteryMeter:
     """Battery meter widget.
 
     A simple battery meter with a charging indicator, will draw at the
     top-right of the display.
     """
+
     def __init__(self):
         self.level = -2
 
@@ -39,32 +41,29 @@ class BatteryMeter:
 
         if watch.battery.charging():
             if self.level != -1:
-                draw.blit(icon, 239-icon[1], 0,
-                             fg=wasp.system.theme('battery'))
+                draw.blit(icon, 239 - icon[1], 0, fg=wasp.system.theme("battery"))
                 self.level = -1
         else:
             level = watch.battery.level()
             if level == self.level:
                 return
 
-
             green = level // 3
             if green > 31:
                 green = 31
-            red = 31-green
+            red = 31 - green
             rgb = (red << 11) + (green << 6)
 
             if self.level < 0 or ((level > 5) ^ (self.level > 5)):
-                if level  > 5:
-                    draw.blit(icon, 239-icon[1], 0,
-                             fg=wasp.system.theme('battery'))
+                if level > 5:
+                    draw.blit(icon, 239 - icon[1], 0, fg=wasp.system.theme("battery"))
                 else:
-                    rgb = 0xf800
-                    draw.blit(icon, 239-icon[1], 0, fg=0xf800)
+                    rgb = 0xF800
+                    draw.blit(icon, 239 - icon[1], 0, fg=0xF800)
 
             w = icon[1] - 10
             x = 239 - 5 - w
-            h = 2*level // 11
+            h = 2 * level // 11
             if 18 - h:
                 draw.fill(0, x, 9, w, 18 - h)
             if h:
@@ -72,8 +71,10 @@ class BatteryMeter:
 
             self.level = level
 
+
 class Clock:
     """Small clock widget."""
+
     def __init__(self, enabled=True):
         self.on_screen = None
         self.enabled = enabled
@@ -102,20 +103,23 @@ class Clock:
         if on_screen and on_screen == now:
             return None
 
-        if self.enabled and (not on_screen
-                or now[4] != on_screen[4] or now[3] != on_screen[3]):
-            t1 = '{:02}:{:02}'.format(now[3], now[4])
+        if self.enabled and (
+            not on_screen or now[4] != on_screen[4] or now[3] != on_screen[3]
+        ):
+            t1 = "{:02}:{:02}".format(now[3], now[4])
 
             draw = wasp.watch.drawable
             draw.set_font(fonts.sans28)
-            draw.set_color(wasp.system.theme('status-clock'))
+            draw.set_color(wasp.system.theme("status-clock"))
             draw.string(t1, 52, 4, 138)
 
         self.on_screen = now
         return now
 
+
 class NotificationBar:
     """Show BT status and if there are pending notifications."""
+
     def __init__(self, x=0, y=0):
         self._pos = (x, y)
 
@@ -137,21 +141,23 @@ class NotificationBar:
         (x, y) = self._pos
 
         if wasp.watch.connected():
-            draw.blit(icons.blestatus, x, y, fg=wasp.system.theme('ble'))
+            draw.blit(icons.blestatus, x, y, fg=wasp.system.theme("ble"))
             if wasp.system.notifications:
-                draw.blit(icons.notification, x+22, y,
-                          fg=wasp.system.theme('notify-icon'))
+                draw.blit(
+                    icons.notification, x + 22, y, fg=wasp.system.theme("notify-icon")
+                )
             else:
-                draw.fill(0, x+22, y, 30, 32)
+                draw.fill(0, x + 22, y, 30, 32)
         elif wasp.system.notifications:
-            draw.blit(icons.notification, x, y,
-                      fg=wasp.system.theme('notify-icon'))
-            draw.fill(0, x+30, y, 22, 32)
+            draw.blit(icons.notification, x, y, fg=wasp.system.theme("notify-icon"))
+            draw.fill(0, x + 30, y, 22, 32)
         else:
             draw.fill(0, x, y, 52, 32)
 
+
 class StatusBar:
     """Combo widget to handle notification, time and battery level."""
+
     def __init__(self):
         self._clock = Clock()
         self._meter = BatteryMeter()
@@ -186,13 +192,15 @@ class StatusBar:
             self._notif.update()
         return now
 
+
 class ScrollIndicator:
     """Scrolling indicator.
 
     A pair of arrows that prompted the user to swipe up/down to access
     additional pages of information.
     """
-    def __init__(self, x=240-18, y=240-24):
+
+    def __init__(self, x=240 - 18, y=240 - 24):
         self._pos = (x, y)
         self.up = True
         self.down = True
@@ -208,23 +216,25 @@ class ScrollIndicator:
     def update(self):
         """Update from scrolling indicator."""
         draw = watch.drawable
-        color = wasp.system.theme('scroll-indicator')
+        color = wasp.system.theme("scroll-indicator")
 
         if self.up:
             draw.blit(icons.up_arrow, self._pos[0], self._pos[1], fg=color)
         if self.down:
-            draw.blit(icons.down_arrow, self._pos[0], self._pos[1]+13, fg=color)
+            draw.blit(icons.down_arrow, self._pos[0], self._pos[1] + 13, fg=color)
 
-class Button():
+
+class Button:
     """A button with a text label."""
+
     def __init__(self, x, y, w, h, label):
         self._im = (x, y, w, h, label)
 
     def draw(self):
         """Draw the button."""
-        bg = wasp.watch.drawable.darken(wasp.system.theme('ui'))
-        frame = wasp.system.theme('mid')
-        txt = wasp.system.theme('bright')
+        bg = wasp.watch.drawable.darken(wasp.system.theme("ui"))
+        frame = wasp.system.theme("mid")
+        txt = wasp.system.theme("bright")
         self.update(bg, frame, txt)
 
     def update(self, bg, frame, txt):
@@ -234,12 +244,12 @@ class Button():
         draw.fill(bg, im[0], im[1], im[2], im[3])
         draw.set_color(txt, bg)
         draw.set_font(fonts.sans24)
-        draw.string(im[4], im[0], im[1]+(im[3]//2)-12, width=im[2])
+        draw.string(im[4], im[0], im[1] + (im[3] // 2) - 12, width=im[2])
 
-        draw.fill(frame, im[0],im[1],          im[2], 2)
-        draw.fill(frame, im[0], im[1]+im[3]-2, im[2], 2)
-        draw.fill(frame, im[0],         im[1], 2, im[3])
-        draw.fill(frame, im[0]+im[2]-2, im[1], 2, im[3])
+        draw.fill(frame, im[0], im[1], im[2], 2)
+        draw.fill(frame, im[0], im[1] + im[3] - 2, im[2], 2)
+        draw.fill(frame, im[0], im[1], 2, im[3])
+        draw.fill(frame, im[0] + im[2] - 2, im[1], 2, im[3])
 
     def touch(self, event):
         """Handle touch events."""
@@ -258,8 +268,10 @@ class Button():
 
         return False
 
+
 class ToggleButton(Button):
     """A button with a text label that can be toggled on and off."""
+
     def __init__(self, x, y, w, h, label):
         super().__init__(x, y, w, h, label)
         self.state = False
@@ -269,11 +281,11 @@ class ToggleButton(Button):
         draw = wasp.watch.drawable
 
         if self.state:
-            bg = draw.darken(wasp.system.theme('ui'))
+            bg = draw.darken(wasp.system.theme("ui"))
         else:
-            bg = draw.darken(wasp.system.theme('mid'))
-        frame = wasp.system.theme('mid')
-        txt = wasp.system.theme('bright')
+            bg = draw.darken(wasp.system.theme("mid"))
+        frame = wasp.system.theme("mid")
+        txt = wasp.system.theme("bright")
 
         self.update(bg, frame, txt)
 
@@ -286,8 +298,10 @@ class ToggleButton(Button):
         else:
             return False
 
-class Checkbox():
+
+class Checkbox:
     """A simple (labelled) checkbox."""
+
     def __init__(self, x, y, label=None):
         self._im = (x, y, label)
         self.state = False
@@ -301,9 +315,9 @@ class Checkbox():
         draw = wasp.watch.drawable
         im = self._im
         if im[2]:
-            draw.set_color(wasp.system.theme('bright'))
+            draw.set_color(wasp.system.theme("bright"))
             draw.set_font(fonts.sans24)
-            draw.string(im[2], im[0], im[1]+6)
+            draw.string(im[2], im[0], im[1] + 6)
         self.update()
 
     def update(self):
@@ -311,13 +325,13 @@ class Checkbox():
         draw = wasp.watch.drawable
         im = self._im
         if self.state:
-            c1 = wasp.system.theme('ui')
-            c2 = draw.lighten(c1, wasp.system.theme('contrast'))
+            c1 = wasp.system.theme("ui")
+            c2 = draw.lighten(c1, wasp.system.theme("contrast"))
             fg = c2
         else:
             c1 = 0
             c2 = 0
-            fg = wasp.system.theme('mid')
+            fg = wasp.system.theme("mid")
         # Draw checkbox on the right margin if there is a label, otherwise
         # draw at the natural location
         x = 239 - 32 - 4 if im[2] else im[0]
@@ -328,14 +342,16 @@ class Checkbox():
         x = event[1]
         y = event[2]
         im = self._im
-        if (self.label or im[0] <= x < im[0]+40) and im[1] <= y < im[1]+40:
+        if (self.label or im[0] <= x < im[0] + 40) and im[1] <= y < im[1] + 40:
             self.state = not self.state
             self.update()
             return True
         return False
 
-class GfxButton():
+
+class GfxButton:
     """A button with a graphical icon."""
+
     def __init__(self, x, y, gfx):
         self._im = bytes((x, y))
         self.gfx = gfx
@@ -362,6 +378,7 @@ class GfxButton():
 
         return False
 
+
 _SLIDER_KNOB_DIAMETER = const(40)
 _SLIDER_KNOB_RADIUS = const(_SLIDER_KNOB_DIAMETER // 2)
 _SLIDER_WIDTH = const(220)
@@ -370,12 +387,14 @@ _SLIDER_TRACK_HEIGHT = const(8)
 _SLIDER_TRACK_Y1 = const(_SLIDER_KNOB_RADIUS - (_SLIDER_TRACK_HEIGHT // 2))
 _SLIDER_TRACK_Y2 = const(_SLIDER_TRACK_Y1 + _SLIDER_TRACK_HEIGHT)
 
-class Slider():
+
+class Slider:
     """A slider to select values."""
+
     def __init__(self, steps, x=10, y=90, color=None):
         self.value = 0
         self._steps = steps
-        self._stepsize = _SLIDER_TRACK / (steps-1)
+        self._stepsize = _SLIDER_TRACK / (steps - 1)
         self._x = x
         self._y = y
         self._color = color
@@ -388,39 +407,59 @@ class Slider():
         y = self._y
         color = self._color
         if self._color is None:
-            self._color = wasp.system.theme('ui')
+            self._color = wasp.system.theme("ui")
             color = self._color
         if self._lowlight is None:
-            self._lowlight = draw.lighten(color, wasp.system.theme('contrast'))
+            self._lowlight = draw.lighten(color, wasp.system.theme("contrast"))
         light = self._lowlight
 
-        knob_x = x + ((_SLIDER_TRACK * self.value) // (self._steps-1))
+        knob_x = x + ((_SLIDER_TRACK * self.value) // (self._steps - 1))
         draw.blit(icons.knob, knob_x, y, color)
 
         w = knob_x - x
         if w > 0:
             draw.fill(0, x, y, w, _SLIDER_TRACK_Y1)
             if w > _SLIDER_KNOB_RADIUS:
-                draw.fill(0, x, y+_SLIDER_TRACK_Y1,
-                          _SLIDER_KNOB_RADIUS, _SLIDER_TRACK_HEIGHT)
-                draw.fill(color, x+_SLIDER_KNOB_RADIUS, y+_SLIDER_TRACK_Y1,
-                          w-_SLIDER_KNOB_RADIUS, _SLIDER_TRACK_HEIGHT)
+                draw.fill(
+                    0,
+                    x,
+                    y + _SLIDER_TRACK_Y1,
+                    _SLIDER_KNOB_RADIUS,
+                    _SLIDER_TRACK_HEIGHT,
+                )
+                draw.fill(
+                    color,
+                    x + _SLIDER_KNOB_RADIUS,
+                    y + _SLIDER_TRACK_Y1,
+                    w - _SLIDER_KNOB_RADIUS,
+                    _SLIDER_TRACK_HEIGHT,
+                )
             else:
-                draw.fill(0, x, y+_SLIDER_TRACK_Y1, w, _SLIDER_TRACK_HEIGHT)
-            draw.fill(0, x, y+_SLIDER_TRACK_Y2, w, _SLIDER_TRACK_Y1)
+                draw.fill(0, x, y + _SLIDER_TRACK_Y1, w, _SLIDER_TRACK_HEIGHT)
+            draw.fill(0, x, y + _SLIDER_TRACK_Y2, w, _SLIDER_TRACK_Y1)
 
         sx = knob_x + _SLIDER_KNOB_DIAMETER
         w = _SLIDER_WIDTH - _SLIDER_KNOB_DIAMETER - w
         if w > 0:
             draw.fill(0, sx, y, w, _SLIDER_TRACK_Y1)
             if w > _SLIDER_KNOB_RADIUS:
-                draw.fill(0, sx+w-_SLIDER_KNOB_RADIUS, y+_SLIDER_TRACK_Y1,
-                          _SLIDER_KNOB_RADIUS, _SLIDER_TRACK_HEIGHT)
-                draw.fill(light, sx, y+_SLIDER_TRACK_Y1,
-                          w-_SLIDER_KNOB_RADIUS, _SLIDER_TRACK_HEIGHT)
+                draw.fill(
+                    0,
+                    sx + w - _SLIDER_KNOB_RADIUS,
+                    y + _SLIDER_TRACK_Y1,
+                    _SLIDER_KNOB_RADIUS,
+                    _SLIDER_TRACK_HEIGHT,
+                )
+                draw.fill(
+                    light,
+                    sx,
+                    y + _SLIDER_TRACK_Y1,
+                    w - _SLIDER_KNOB_RADIUS,
+                    _SLIDER_TRACK_HEIGHT,
+                )
             else:
-                draw.fill(0, sx, y+_SLIDER_TRACK_Y1, w, _SLIDER_TRACK_HEIGHT)
-            draw.fill(0, sx, y+_SLIDER_TRACK_Y2, w, _SLIDER_TRACK_Y1)
+                draw.fill(0, sx, y + _SLIDER_TRACK_Y1, w, _SLIDER_TRACK_HEIGHT)
+            draw.fill(0, sx, y + _SLIDER_TRACK_Y2, w, _SLIDER_TRACK_Y1)
 
     def update(self):
         self.draw()
@@ -437,12 +476,14 @@ class Slider():
         self.value = v
         return changed
 
-class Spinner():
+
+class Spinner:
     """A simple Spinner widget.
 
     In order to have large enough hit boxes the spinner is a fairly large
     widget and requires 60x120 px.
     """
+
     def __init__(self, x, y, mn, mx, field=1, incr=1):
         self._im = bytes((x, y, mn, mx, field, incr))
         self.value = mn
@@ -451,27 +492,27 @@ class Spinner():
         """Draw the spinner."""
         draw = watch.drawable
         im = self._im
-        fg = draw.lighten(wasp.system.theme('ui'), wasp.system.theme('contrast'))
-        draw.blit(icons.up_arrow, im[0]+30-8, im[1]+20, fg)
-        draw.blit(icons.down_arrow, im[0]+30-8, im[1]+120-20-9, fg)
+        fg = draw.lighten(wasp.system.theme("ui"), wasp.system.theme("contrast"))
+        draw.blit(icons.up_arrow, im[0] + 30 - 8, im[1] + 20, fg)
+        draw.blit(icons.down_arrow, im[0] + 30 - 8, im[1] + 120 - 20 - 9, fg)
         self.update()
 
     def update(self):
         """Update the spinner value."""
         draw = watch.drawable
         im = self._im
-        draw.set_color(wasp.system.theme('bright'))
+        draw.set_color(wasp.system.theme("bright"))
         draw.set_font(fonts.sans28)
         s = str(self.value)
         if len(s) < im[4]:
-            s = '0' * (im[4] - len(s)) + s
-        draw.string(s, im[0], im[1]+60-14, width=60)
+            s = "0" * (im[4] - len(s)) + s
+        draw.string(s, im[0], im[1] + 60 - 14, width=60)
 
     def touch(self, event):
         x = event[1]
         y = event[2]
         im = self._im
-        if x >= im[0] and x < im[0]+60 and y >= im[1] and y < im[1]+120:
+        if x >= im[0] and x < im[0] + 60 and y >= im[1] and y < im[1] + 120:
             if y < im[1] + 60:
                 self.value += im[5]
                 if self.value > im[3]:
@@ -488,8 +529,10 @@ class Spinner():
 
         return False
 
+
 class Stopwatch:
     """A stopwatch widget"""
+
     def __init__(self, y):
         self._y = y
         self.reset()
@@ -520,7 +563,7 @@ class Stopwatch:
         if self._started_at:
             uptime = wasp.watch.rtc.get_uptime_ms() // 10
             self.count = uptime - self._started_at
-            if self.count > 999*60*100:
+            if self.count > 999 * 60 * 100:
                 self.reset()
 
         if self._last_count != self.count:
@@ -530,20 +573,23 @@ class Stopwatch:
             minutes = secs // 60
             secs %= 60
 
-            t1 = '{}:{:02}'.format(minutes, secs)
-            t2 = '{:02}'.format(centisecs)
+            t1 = "{}:{:02}".format(minutes, secs)
+            t2 = "{:02}".format(centisecs)
 
             y = self._y
             draw = wasp.watch.drawable
             draw.set_font(fonts.sans36)
-            draw.set_color(draw.lighten(wasp.system.theme('ui'), wasp.system.theme('contrast')))
+            draw.set_color(
+                draw.lighten(wasp.system.theme("ui"), wasp.system.theme("contrast"))
+            )
             w = fonts.width(fonts.sans36, t1)
-            draw.string(t1, 180-w, y)
-            draw.fill(0, 0, y, 180-w, 36)
+            draw.string(t1, 180 - w, y)
+            draw.fill(0, 0, y, 180 - w, 36)
             draw.set_font(fonts.sans24)
-            draw.string(t2, 180, y+18, width=46)
+            draw.string(t2, 180, y + 18, width=46)
 
             self._last_count = self.count
+
 
 class ConfirmationView:
     """Confirmation widget allowing user confirmation of a setting."""
@@ -551,15 +597,15 @@ class ConfirmationView:
     def __init__(self):
         self.active = False
         self.value = False
-        self._yes = Button(20, 140, 90, 45, 'Yes')
-        self._no = Button(130, 140, 90, 45, 'No')
+        self._yes = Button(20, 140, 90, 45, "Yes")
+        self._no = Button(130, 140, 90, 45, "No")
 
     def draw(self, message):
         draw = wasp.watch.drawable
         mute = wasp.watch.display.mute
 
         mute(True)
-        draw.set_color(wasp.system.theme('bright'))
+        draw.set_color(wasp.system.theme("bright"))
         draw.set_font(fonts.sans24)
         draw.fill()
         draw.string(message, 0, 60)
