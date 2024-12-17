@@ -31,7 +31,6 @@ auto_load = true
 file = 'apps/flashlight.py'
 auto_load = true
 
- 
 [[watchface]]
-file = 'watch_faces/terminal.py'
+file = 'watch_faces/dual_clock.py'
 default = true

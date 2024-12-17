@@ -113,7 +113,11 @@ class WineApp(object):
         """Activate the application."""
         wasp.system.request_event(wasp.EventMask.TOUCH | wasp.EventMask.SWIPE_LEFTRIGHT)
         self._page = 0
-        self._spinner = wasp.widgets.Spinner(90, 100, 0, 10)
+        self.spinners = (
+            wasp.widgets.Spinner(0, 100, 0, 10),
+            wasp.widgets.Spinner(90, 100, 0, 10),
+            wasp.widgets.Spinner(160, 100, 0, 10),
+        )
         self.end_session = wasp.widgets.Button(10, 150, 220, 80, "END")
         self._draw()
 
@@ -125,7 +129,7 @@ class WineApp(object):
         sbar.draw()
         draw.set_font(fonts.sans24)
 
-        if self._page == 3:
+        if self._page == 2:
             draw.string("Sober?", 0, 50, width=240)
             with open("drinks.txt", "r", encoding="utf-8") as f:
                 raw = f.readlines()
@@ -157,28 +161,29 @@ class WineApp(object):
                     19, 70, 168, False, minutes_passed(date), amount, alcohol_percentage
                 )
 
-            draw.string("BAC: " + str(round(bac, 3)) + "%", 0, 100, width=240)
+            draw.string(
+                "BAC: {}%".format(int(bac * 1000 + 0.5) / 1000), 0, 100, width=240
+            )
             return
 
-        if self._page == 4:
+        if self._page == 1:
             draw.string("End session?", 0, 50, width=240)
             self.end_session.draw()
             return
 
         if self._page == 0:
-            draw.string("Wine", 0, 50, width=240)
-        elif self._page == 1:
-            draw.string("Beer", 0, 50, width=240)
-        elif self._page == 2:
-            draw.string("Vodka", 0, 50, width=240)
+            draw.string("Wine", 0, 50)
+            draw.string("Beer", 90, 50)
+            draw.string("Vodka", 160, 50)
 
-        self._spinner.value = self._drinks[self._page]
-        self._spinner.draw()
+        for i in range(len(self.spinners)):
+            self.spinners[i].value = self._drinks[i]
+            self.spinners[i].draw()
 
     def background(self):
         """De-activate the application (without losing original state)."""
-        self._spinner = None
-        del self._spinner
+        self.spinners = None
+        del self.spinners
         self._page = None
         del self._page
         self.end_session = None
@@ -190,17 +195,17 @@ class WineApp(object):
     def swipe(self, event):
         if event[0] == wasp.EventType.LEFT:
             self._page += 1
-            if self._page > 4:
+            if self._page > 2:
                 self._page = 0
         elif event[0] == wasp.EventType.RIGHT:
             self._page -= 1
             if self._page < 0:
-                self._page = 4
+                self._page = 2
 
         self._draw()
 
     def touch(self, event):
-        if self._page == 4:
+        if self._page == 1:
             if self.end_session.touch(event):
                 if sum(self._drinks) == 0:
                     return
@@ -210,13 +215,45 @@ class WineApp(object):
                     self._drinks[i] = 0
                 wasp.system.navigate(wasp.EventType.HOME)
         else:
-            self._spinner.touch(event)
-            if self._drinks[self._page] < self._spinner.value:
-                with open("drinks.txt", "a", encoding="utf-8") as f:
-                    now = watch.rtc.get_localtime()
-                    f.write(
-                        "{},{}-{}-{}-{}-{}".format(
-                            str(self._page), now[0], now[1], now[2], now[3], now[4]
+            for i in range(len(self.spinners)):
+                self.spinners[i].touch(event)
+                if self.spinners[i].value - self._drinks[i] == 1:
+                    with open("drinks.txt", "a", encoding="utf-8") as f:
+                        now = watch.rtc.get_localtime()
+                        f.write(
+                            "{},{}-{}-{}-{}-{};".format(
+                                i, now[0], now[1], now[2], now[3], now[4]
+                            )
                         )
-                    )
-            self._drinks[self._page] = self._spinner.value
+                    self._drinks[i] = self.spinners[i].value
+                    break
+                elif self.spinners[i].value - self._drinks[i] == -1:
+                    with open("drinks.txt", "r", encoding="utf-8") as f:
+                        raw = f.readlines()
+                        if len(raw) < 1:
+                            last_line = ""
+                        else:
+                            last_line = raw[-1]
+                        if "\n" in last_line:
+                            last_line = ""
+                    drinks = last_line.split(";")
+                    for j in range(len(drinks) - 1, -1, -1):
+                        if len(drinks[j]) < 5:
+                            continue
+
+                        if drinks[j].split(",")[0] == str(i):
+                            drinks.pop(j)
+                            self._drinks[i] = self.spinners[i].value
+                            with open("drinks.txt", "r") as file:
+                                lines = file.readlines()
+
+                            with open("drinks.txt", "w") as file:
+                                for line in lines[:-1]:
+                                    file.write(line)
+                                file.write(";".join(drinks))
+
+                            break
+                elif self.spinners[i].value - self._drinks[i] != 0:
+                    self.spinners[i].value = 0
+                    self.spinners[i].draw()
+                    break
